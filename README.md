@@ -41,4 +41,3 @@ In steps, you can add some settings to get the best performance.
 
 - `extra_data_folders: 'scriptfiles/database scriptfiles/animations'`
 #### This parameter allows you to copy an entire folder, such as scriptfiles/animations; it will copy everything inside that folder.
-```

@@ -25,7 +25,7 @@ jobs:
         uses: devbluen/openmp-build-action@v1
         with:
           gamemode_name: 'main'
-          core_libs: 'sscanf mysql'
+          core_libs: 'amxsscanf libmariadb log-core'
           extra_data_folders: 'scriptfiles/database'
 
       - name: Upload Windows Artifact

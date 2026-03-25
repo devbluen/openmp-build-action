@@ -57,6 +57,7 @@ runs:
         
         if (Test-Path "plugins\*.dll") { Copy-Item "plugins\*.dll" "deploy_win\plugins\" }
         if (Test-Path "components\*.dll") { Copy-Item "components\*.dll" "deploy_win\components\" }
+        if (Test-Path "omp-server.exe") { Copy-Item "omp-server.exe" "deploy_win\" }
         
         foreach ($folder in "${{ inputs.extra_data_folders }}".Split(" ")) {
           $src = $folder.Replace("/", "\") # Garante compatibilidade de barras no Windows

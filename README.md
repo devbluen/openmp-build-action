@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: build-completo
+          name: full-build
           path: deploy_win/
 ```
 

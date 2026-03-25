@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Gamemode using Custom Action
-        uses: devbluen/openmp-build-action@v1
+        uses: devbluen/openmp-build-action@v2
         with:
           gamemode_name: 'main'
           core_libs: 'amxsscanf libmariadb log-core'

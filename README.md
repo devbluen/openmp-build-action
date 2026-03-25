@@ -39,6 +39,12 @@ jobs:
         with:
           name: build-linux-standard
           path: deploy_linux/
+
+      - name: Upload Linux Dynamic Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-dynamic
+          path: deploy_linux_dyn/
 ```
 
 In steps, you can add some settings to get the best performance.

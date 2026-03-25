@@ -5,22 +5,40 @@ Compile your gamemode directly from GitHub.
 Within your SAMP project, create the following directory in the root folder: ".github/workflows" and inside workflows, create a .yml file with the name you want, for example "openmp-build.yml".
 Now enter the configuration below.
 ```yml
+name: Build and Deploy Gamemode
+
+on:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: windows-latest
+    
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build Gamemode
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Gamemode using Custom Action
         uses: devbluen/openmp-build-action@v1
         with:
           gamemode_name: 'main'
           core_libs: 'sscanf mysql'
+          extra_data_folders: 'scriptfiles/database'
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: full-build
+          name: build-windows
           path: deploy_win/
+
+      - name: Upload Linux Standard Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-standard
+          path: deploy_linux/
 ```
 
 In steps, you can add some settings to get the best performance.

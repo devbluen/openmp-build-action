@@ -1,0 +1,116 @@
+name: 'Open.mp Build and Package'
+description: 'Compiles the open.mp gamemode and generates artifacts for Windows and Linux.'
+inputs:
+  gamemode_name:
+    description: 'Main filename (.pwn) without the extension.'
+    default: 'main'
+    required: false
+  omp_version:
+    description: 'Downloadable version of open.mp'
+    default: 'v1.5.8.3079'
+    required: false
+  core_libs:
+    description: 'List of .dll/.so libraries separated by spaces.'
+    default: 'amxsscanf libmariadb log-core'
+    required: false
+  core_config:
+    description: 'List of config files (ini/json) separated by spaces'
+    default: 'mysql.ini config.json'
+    required: false
+  extra_data_folders:
+    description: 'Additional folders to copy (e.g., scriptfiles/logs, scriptfiles/data)'
+    default: 'scriptfiles/database'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download open.mp Compiler
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/openmultiplayer/compiler/releases/download/v3.10.11/pawnc-3.10.11-windows.zip" -OutFile "compiler.zip"
+        Expand-Archive -Path "compiler.zip" -DestinationPath "omp-compiler"
+
+    - name: Compile Gamemode
+      shell: cmd
+      run: |
+        for /f "delims=" %%i in ('dir /s /b omp-compiler\pawncc.exe') do set "PAWNCC_PATH=%%i"
+        "%PAWNCC_PATH%" "%CD%\gamemodes\${{ inputs.gamemode_name }}.pwn" ^
+          "-i%CD%\qawno\include" ^
+          "-D%CD%\gamemodes" ^
+          "-;+" "-(+" "-d3" ^
+          "-o:%CD%\gamemodes\${{ inputs.gamemode_name }}.amx"
+
+    - name: Verify Build
+      shell: powershell
+      run: |
+        if (!(Test-Path "gamemodes\${{ inputs.gamemode_name }}.amx")) {
+          Write-Error "ERROR: The AMX file was not generated."
+          exit 1
+        }
+
+    - name: Prepare Windows Build
+      shell: powershell
+      run: |
+        New-Item -ItemType Directory -Force -Path "deploy_win\gamemodes", "deploy_win\plugins", "deploy_win\components", "deploy_win\scriptfiles\database"
+        Copy-Item "gamemodes\${{ inputs.gamemode_name }}.amx" "deploy_win\gamemodes\"
+        
+        if (Test-Path "plugins\*.dll") { Copy-Item "plugins\*.dll" "deploy_win\plugins\" }
+        if (Test-Path "components\*.dll") { Copy-Item "components\*.dll" "deploy_win\components\" }
+        
+        foreach ($folder in "${{ inputs.extra_data_folders }}".Split(" ")) {
+          $src = $folder.Replace("/", "\") # Garante compatibilidade de barras no Windows
+            if (Test-Path "$src\*") {
+                $dest = Join-Path "deploy_win" $src
+                New-Item -ItemType Directory -Force -Path $dest
+                Copy-Item -Recurse "$src\*" -Destination "$dest\"
+            }
+        }
+
+        foreach ($lib in "${{ inputs.core_libs }}".Split(" ")) {
+          if (Test-Path "$lib.dll") { Copy-Item "$lib.dll" "deploy_win\" }
+        }
+        foreach ($config in "${{ inputs.core_config }}".Split(" ")) {
+          if (Test-Path "$config") { Copy-Item "$config" "deploy_win\" }
+        }
+
+    - name: Prepare Linux Builds
+      shell: powershell
+      run: |
+        $linux_dirs = "deploy_linux", "deploy_linux_dyn"
+        foreach ($dir in $linux_dirs) {
+            New-Item -ItemType Directory -Force -Path "$dir\gamemodes", "$dir\plugins", "$dir\components"
+        }
+        
+        Invoke-WebRequest -Uri "https://github.com/openmultiplayer/open.mp/releases/download/${{ inputs.omp_version }}/open.mp-linux-x86.tar.gz" -OutFile "linux_std.tar.gz"
+        tar -xzf linux_std.tar.gz
+        Copy-Item "Server\omp-server" "deploy_linux\"
+        Copy-Item -Recurse "Server\components\*" "deploy_linux\components\"
+        
+        Invoke-WebRequest -Uri "https://github.com/openmultiplayer/open.mp/releases/download/${{ inputs.omp_version }}/open.mp-linux-x86-dynssl.tar.gz" -OutFile "linux_dyn.tar.gz"
+        tar -xzf linux_dyn.tar.gz
+        Copy-Item "Server\omp-server" "deploy_linux_dyn\"
+        Copy-Item -Recurse "Server\components\*" "deploy_linux_dyn\components\"
+
+        foreach ($dir in $linux_dirs) {
+            Copy-Item "gamemodes\${{ inputs.gamemode_name }}.amx" "$dir\gamemodes\"
+            if (Test-Path "scriptfiles\database\*") { Copy-Item -Recurse "scriptfiles\database\*" "$dir\scriptfiles\database\" }
+            if (Test-Path "components\*.so") { Get-Item "components\*.so" | Copy-Item -Destination "$dir\components\" }
+            if (Test-Path "plugins\*.so") { Get-Item "plugins\*.so" | Copy-Item -Destination "$dir\plugins\" }
+            
+            foreach ($lib in "${{ inputs.core_libs }}".Split(" ")) {
+              if (Test-Path "$lib.so") { Copy-Item "$lib.so" "$dir\" }
+            }
+
+            foreach ($config in "${{ inputs.core_config }}".Split(" ")) {
+              if (Test-Path "$config") { Copy-Item "$config" "$dir\" }
+            }
+
+            foreach ($folder in "${{ inputs.extra_data_folders }}".Split(" ")) {
+              if (Test-Path "$folder\*") {
+                    $dest = Join-Path $dir $folder
+                    New-Item -ItemType Directory -Force -Path $dest
+                    Copy-Item -Recurse "$folder\*" -Destination "$dest\"
+                }
+            }
+        }
